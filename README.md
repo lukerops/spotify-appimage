@@ -1,1 +1,1 @@
-# spotify-appimage
+# google-chrome-appimage
