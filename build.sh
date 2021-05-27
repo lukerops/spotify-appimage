@@ -4,6 +4,7 @@ set -x
 
 mkdir -p spotify/AppDir
 cd spotify
+WORKDIR=$(pwd)
 
 # download spotify
 wget https://repository-origin.spotify.com/pool/non-free/s/spotify-client/spotify-client_1.1.56.595.g2d2da0de_amd64.deb
@@ -12,7 +13,7 @@ wget https://repository-origin.spotify.com/pool/non-free/s/spotify-client/spotif
 ar x spotify-client_1.1.56.595.g2d2da0de_amd64.deb
 tar -xf data.tar.gz -C ./AppDir
 
-cd AppDir
+cd $WORKDIR/AppDir
 SPOTIFY_VERSION=$(./usr/bin/spotify --version | sed -e 's|,||g' | cut -d ' ' -f3)
 
 mv ./usr/share/spotify/spotify.desktop .
@@ -38,7 +39,15 @@ cp ./usr/share/icons/hicolor/256x256/apps/spotify.png .
 sed -i -e "s|Exec=spotify|Exec=AppRun|g" -e "s|Icon=spotify-client|Icon=spotify|g" spotify.desktop
 sed -i -e "s|StartupWMClass=spotify|StartupWMClass=spotify\nX-AppImage-Version=$SPOTIFY_VERSION|g" spotify.desktop
 
-cd ..
+# fix missing libcurl_gnutls.so
+apt install -y libcurl3-gnutls
+
+cp /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.6.0 ./usr/lib
+cd ./usr/lib
+ln -sf libcurl-gnutls.so.4.6.0 libcurl-gnutls.so.4
+ln -sf libcurl-gnutls.so.3 libcurl-gnutls.so.4
+
+cd $WORKDIR
 cp ../AppRun ./AppDir
 
 wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage

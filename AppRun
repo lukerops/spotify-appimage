@@ -1,5 +1,20 @@
 #!/bin/sh
 
-HERE=$(dirname $(readlink -f "${0}"))
-export LD_LIBRARY_PATH="${HERE}"/usr/lib:$PATH
-"${HERE}"/usr/bin/spotify $@
+set -e
+
+if [ ! -z "$DEBUG" ]; then
+	env
+	set -x
+fi
+
+HERE=$(dirname $(readlink -f "$0"))
+
+if [ -z "$LD_LIBRARY_PATH" ]; then
+	export LD_LIBRARY_PATH="$HERE/usr/lib"
+else
+	export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
+fi
+
+export PATH="$HERE/usr/bin:$PATH"
+
+trap "spotify $@" EXIT

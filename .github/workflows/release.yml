@@ -1,7 +1,7 @@
 name: Release
 on:
   schedule:
-    - cron: "5 */12 * * *"
+    - cron: "0 0 * * *"
   push:
     branches:
       - main
@@ -10,9 +10,6 @@ on:
 jobs:
   Spotify:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        version: ['3.8']
     steps:
     - uses: actions/checkout@v2
 
