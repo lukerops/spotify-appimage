@@ -43,7 +43,66 @@ sed -i -e "s|StartupWMClass=spotify|StartupWMClass=spotify\nX-AppImage-Version=$
 sudo apt install -y libcurl3-gnutls
 
 cd ./usr/lib
+
+#libbrotli1
+cp /usr/lib/x86_64-linux-gnu/libbrotlicommon.so.1.0.7 .
+ln -s libbrotlicommon.so.1.0.7 libbrotlicommon.so.1
+cp /usr/lib/x86_64-linux-gnu/libbrotlidec.so.1.0.7 .
+ln -s libbrotlidec.so.1.0.7 libbrotlidec.so.1
+cp /usr/lib/x86_64-linux-gnu/libbrotlienc.so.1.0.7 .
+ln -s libbrotlienc.so.1.0.7 libbrotlienc.so.1
+
+#libgmp10
+cp /usr/lib/x86_64-linux-gnu/libgmp.so.10.4.0 .
+ln -s libgmp.so.10.4.0 libgmp.so.10
+
+#libhogweed5
+cp /usr/lib/x86_64-linux-gnu/libhogweed.so.5.0 .
+ln -s libhogweed.so.5.0 libhogweed.so.5
+
+#libidn2-0
+cp /usr/lib/x86_64-linux-gnu/libidn2.so.0.3.6 .
+ln -s libidn2.so.0.3.6 libidn2.so.0
+
+#libnettle7
+cp /usr/lib/x86_64-linux-gnu/libnettle.so.7.0 .
+ln -s libnettle.so.7.0 libnettle.so.7
+
+#libffi7
+cp /usr/lib/x86_64-linux-gnu/libffi.so.7.1.0 .
+ln -s libffi.so.7.1.0 libffi.so.7
+
+#libp11-kit0
+cp /usr/lib/x86_64-linux-gnu/libp11-kit.so.0.3.0 .
+ln -s libp11-kit.so.0.3.0 libp11-kit.so.0
+
+#libtasn1-6
+cp /usr/lib/x86_64-linux-gnu/libtasn1.so.6.6.0 .
+ln -s libtasn1.so.6.6.0 libtasn1.so.6
+
+#libunistring2
+cp /usr/lib/x86_64-linux-gnu/libunistring.so.2.1.0 .
+ln -s libunistring.so.2.1.0 libunistring.so.2
+
+#libgnutls30
+cp /usr/lib/x86_64-linux-gnu/libgnutls.so.30.27.0 .
+ln -s libgnutls.so.30.27.0 libgnutls.so.30
+
+#libnghttp2-14
+cp /usr/lib/x86_64-linux-gnu/libnghttp2.so.14.19.0 .
+ln -s libnghttp2.so.14.19.0 libnghttp2.so.14
+
+#libpsl5
+cp /usr/lib/x86_64-linux-gnu/libpsl.so.5.3.2 .
+ln -s libpsl.so.5.3.2 libpsl.so.5
+
+#librtmp
 cp /usr/lib/x86_64-linux-gnu/librtmp.so.1 .
+
+#zlib1g
+cp /lib/x86_64-linux-gnu/libz.so.1.2.11 .
+ln -s libz.so.1.2.11 libz.so.1
+
 cp /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.6.0 .
 ln -s libcurl-gnutls.so.4.6.0 libcurl-gnutls.so.4
 ln -s libcurl-gnutls.so.4 libcurl-gnutls.so.3
