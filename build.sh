@@ -42,8 +42,9 @@ sed -i -e "s|StartupWMClass=spotify|StartupWMClass=spotify\nX-AppImage-Version=$
 # fix missing libcurl_gnutls.so
 sudo apt install -y libcurl3-gnutls
 
-cp /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.6.0 ./usr/lib
 cd ./usr/lib
+cp /usr/lib/x86_64-linux-gnu/librtmp.so.1 .
+cp /usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4.6.0 .
 ln -s libcurl-gnutls.so.4.6.0 libcurl-gnutls.so.4
 ln -s libcurl-gnutls.so.4 libcurl-gnutls.so.3
 
