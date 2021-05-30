@@ -1,4 +1,5 @@
 name: Release
+
 on:
   schedule:
     - cron: "0 0 * * *"
@@ -6,15 +7,166 @@ on:
     branches:
       - main
 
-
 jobs:
-  Spotify:
+  libcurl:
     runs-on: ubuntu-latest
+    env:
+      NETTLE_VERSION: 3.7.2
+      GNUTLS_VERSION: 3.6.16
+      CURL_VERSION: 7.77.0
+
+    steps:
+    - name: Cache libcurl
+      id: cache
+      uses: actions/cache@v2
+      with:
+        path: libcurl-artifact.tar
+        key: ${{ runner.os }}-nettle_${{ env.NETTLE_VERSION }}-gnutls_${{ env.GNUTLS_VERSION }}-curl_${{ env.CURL_VERSION }}
+
+    - name: Preparing to Build
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y wget lzip tar build-essential pkg-config m4 datefudge net-tools tree autogen
+        mkdir -p build
+
+    - name: Download nettle v3.7.2
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cd build
+        wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.2.tar.gz
+        tar -xf nettle-3.7.2.tar.gz
+
+    - name: Download gnutls v3.6.16
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cd build
+        wget https://www.gnupg.org/ftp/gcrypt/gnutls/v3.6/gnutls-3.6.16.tar.xz
+        tar -xf gnutls-3.6.16.tar.xz
+
+    - name: Download curl v7.77.0
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cd build
+        wget https://github.com/curl/curl/releases/download/curl-7_77_0/curl-7.77.0.tar.xz
+        tar -xf curl-7.77.0.tar.xz 
+
+    - name: Build nettle
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cd build/nettle-3.7.2
+        ./configure
+        make
+        make check
+        make install
+        # fix permissions
+        chmod 755 /usr/local/lib64/libnettle.so.*.*
+
+    - name: Build gnutls
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        PKG_CONFIG_PATH: /usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig
+        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib
+      run: |
+        cd build/gnutls-3.6.16
+        ./configure --with-included-libtasn1 --with-included-unistring --without-p11-kit
+        make
+        make check
+        make install
+
+    - name: Build curl
+      if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        PKG_CONFIG_PATH: /usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig
+        LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib
+      run: |
+        cd build/curl-7.77.0
+        ./configure --with-gnutls
+        make
+        make check
+        make install
+
+    - name: Prepare artifact
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p artifact/usr/{lib,share}
+        cp -a /usr/local/lib/libcurl*.so* artifact/usr/lib
+        cp -a /usr/local/lib/libgnutls*.so* artifact/usr/lib
+        cp -a /usr/local/lib64/libnettle*.so* artifact/usr/lib
+        cp -a /usr/local/lib64/libhogweed*.so* artifact/usr/lib
+        cp -aR /usr/local/share/locale artifact/usr/share
+        tar -cvf libcurl-artifact.tar artifact/
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: libcurl-artifact
+        path: libcurl-artifact.tar
+
+  spotify:
+    runs-on: ubuntu-latest
+    needs: libcurl
+    env:
+      SPOTIFY_VERSION: 1.1.56.595.g2d2da0de
+
     steps:
     - uses: actions/checkout@v2
 
-    - name: Build Spotify
-      run: ./build.sh
+    - name: Preparing to build
+      run: |
+        mkdir -p dist AppDir/usr/share/icons/hicolor/{24x24,32x32,48x48,64x64,128x128,256x256}/apps
+
+    - name: Download spotify
+      run: |
+        wget -q https://repository-origin.spotify.com/pool/non-free/s/spotify-client/spotify-client_${SPOTIFY_VERSION}_amd64.deb
+        ar x spotify-client_${SPOTIFY_VERSION}_amd64.deb
+        tar -xf data.tar.gz -C ./AppDir
+
+    - name: Move icons
+      run: |
+        mv AppDir/usr/share/spotify/icons/spotify-linux-64.png  AppDir/usr/share/icons/hicolor/64x64/apps/spotify.png
+        mv AppDir/usr/share/spotify/icons/spotify-linux-32.png  AppDir/usr/share/icons/hicolor/32x32/apps/spotify.png
+        mv AppDir/usr/share/spotify/icons/spotify-linux-256.png AppDir/usr/share/icons/hicolor/256x256/apps/spotify.png
+        mv AppDir/usr/share/spotify/icons/spotify-linux-24.png  AppDir/usr/share/icons/hicolor/24x24/apps/spotify.png
+        mv AppDir/usr/share/spotify/icons/spotify-linux-128.png AppDir/usr/share/icons/hicolor/128x128/apps/spotify.png
+        mv AppDir/usr/share/spotify/icons/spotify-linux-48.png  AppDir/usr/share/icons/hicolor/48x48/apps/spotify.png
+        cp AppDir/usr/share/icons/hicolor/256x256/apps/spotify.png AppDir/
+
+    - name: Adjust the .desktop file 
+      run: |
+        mv AppDir/usr/share/spotify/spotify.desktop AppDir/
+        sed -i -e "s|Exec=spotify|Exec=AppRun|g" -e "s|Icon=spotify-client|Icon=spotify|g" AppDir/spotify.desktop
+        sed -i -e "s|StartupWMClass=spotify|StartupWMClass=spotify\nX-AppImage-Version=$SPOTIFY_VERSION|g" AppDir/spotify.desktop
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: libcurl-artifact
+
+    - name: Extracting dependencies
+      run: |
+        tar -xvf libcurl-artifact.tar -C AppDir/
+
+    - name: Build AppImage
+      run: |
+        cp AppRun AppDir/
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool-x86_64.AppImage
+        ./appimagetool-x86_64.AppImage AppDir -n -u "gh-releases-zsync|lucasscvvieira|spotify-appimage|stable|Spotify*.AppImage.zsync" "Spotify-$SPOTIFY_VERSION-x86_64.AppImage"
+        chmod +x Spotify*.AppImage
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: spotify-appimage
+        path: Spotify-*-x86_64.AppImage*
+
+
+  release:
+    runs-on: ubuntu-latest
+    needs: spotify
+
+    steps:
+    - uses: actions/download-artifact@v2
+      with:
+        name: spotify-appimage
        
     - name: Release
       uses: marvinpinto/action-automatic-releases@latest
@@ -23,5 +175,5 @@ jobs:
         automatic_release_tag: stable
         prerelease: false
         draft: false
-        files: ./spotify/dist/Spotify-*-x86_64.AppImage*
+        files: Spotify-*-x86_64.AppImage*
         repo_token: ${{ secrets.GITHUB_TOKEN }}
