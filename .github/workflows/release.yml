@@ -1,21 +1,24 @@
 name: Release
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
   push:
     branches:
       - main
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   libcurl:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu-latest
+      image: ubuntu:latest
     env:
       NETTLE_VERSION: 3.7.2
       GNUTLS_VERSION: 3.6.16
       CURL_VERSION: 7.77.0
+      CACHE_KEY: 3
 
     steps:
     - name: Cache libcurl
@@ -23,13 +26,17 @@ jobs:
       uses: actions/cache@v2
       with:
         path: libcurl-artifact.tar
-        key: ${{ runner.os }}-nettle_${{ env.NETTLE_VERSION }}-gnutls_${{ env.GNUTLS_VERSION }}-curl_${{ env.CURL_VERSION }}
+        key: ${{ runner.os }}-nettle_${{ env.NETTLE_VERSION }}-gnutls_${{ env.GNUTLS_VERSION }}-curl_${{ env.CURL_VERSION }}-cache_${{ env.CACHE_KEY }}
 
     - name: Preparing to Build
       if: steps.cache.outputs.cache-hit != 'true'
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo apt-get update -y
-        sudo apt-get install -y wget lzip tar build-essential pkg-config m4 datefudge net-tools tree autogen
+        apt-get update -y
+        apt-get install -y wget lzip tar build-essential pkg-config m4 datefudge net-tools autogen libgmp-dev
+        apt-get install -y perl python3 python3-impacket diffutils stunnel4
+        ln -s /bin/python3 /bin/python
         mkdir -p build
 
     - name: Download nettle v3.7.2
@@ -62,7 +69,7 @@ jobs:
         make check
         make install
         # fix permissions
-        chmod 755 /usr/local/lib64/libnettle.so.*.*
+        chmod 755 /usr/local/lib64/libnettle.so.*.* /usr/local/lib64/libhogweed.so.*.*
 
     - name: Build gnutls
       if: steps.cache.outputs.cache-hit != 'true'
@@ -83,7 +90,7 @@ jobs:
         LD_LIBRARY_PATH: /usr/local/lib64:/usr/local/lib
       run: |
         cd build/curl-7.77.0
-        ./configure --with-gnutls
+        ./configure --enable-versioned-symbols --with-gnutls
         make
         make check
         make install
@@ -92,7 +99,11 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p artifact/usr/{lib,share}
-        cp -a /usr/local/lib/libcurl*.so* artifact/usr/lib
+        libs=($(ls /usr/local/lib/libcurl*.so* | sed -e "s|/usr/local/lib/||g" -e "s|libcurl|libcurl-gnutls|g" | sort))
+        for l in ${libs[@]}; do
+          cp -a /usr/local/lib/$(echo $l | sed -e "s|libcurl-gnutls|libcurl|g") artifact/usr/lib/$l
+          [ $(echo ${l//[^.]} | awk '{print length}') -le 2 ] && ln -sf ${libs[-1]} artifact/usr/lib/$l
+        done
         cp -a /usr/local/lib/libgnutls*.so* artifact/usr/lib
         cp -a /usr/local/lib64/libnettle*.so* artifact/usr/lib
         cp -a /usr/local/lib64/libhogweed*.so* artifact/usr/lib
@@ -145,7 +156,8 @@ jobs:
 
     - name: Extracting dependencies
       run: |
-        tar -xvf libcurl-artifact.tar -C AppDir/
+        tar -xvf libcurl-artifact.tar
+        cp -aR artifact/usr AppDir
 
     - name: Build AppImage
       run: |
