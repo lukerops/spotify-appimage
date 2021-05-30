@@ -10,6 +10,8 @@ on:
 jobs:
   libcurl:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu-latest
     env:
       NETTLE_VERSION: 3.7.2
       GNUTLS_VERSION: 3.6.16
