@@ -18,9 +18,11 @@ jobs:
       NETTLE_VERSION: 3.7.2
       GNUTLS_VERSION: 3.6.16
       CURL_VERSION: 7.77.0
-      CACHE_KEY: 3
+      CACHE_KEY: 5
 
     steps:
+    - uses: actions/checkout@v2
+
     - name: Cache libcurl
       id: cache
       uses: actions/cache@v2
@@ -82,6 +84,10 @@ jobs:
         make
         make check
         make install
+
+    - name: Patch curl
+      run: |
+        patch -i patches/curlvers.patch build/curl-7.77.0/lib/libcurl.vers.in
 
     - name: Build curl
       if: steps.cache.outputs.cache-hit != 'true'
@@ -171,7 +177,6 @@ jobs:
       with:
         name: spotify-appimage
         path: Spotify-*-x86_64.AppImage*
-
 
   release:
     runs-on: ubuntu-latest
