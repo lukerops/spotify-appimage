@@ -9,6 +9,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  SPOTIFY_VERSION: 1.1.68.632.g2b11de83
+
 jobs:
   libcurl:
     runs-on: ubuntu-latest
@@ -19,7 +22,6 @@ jobs:
       GNUTLS_VERSION: 3.6.16
       CURL_VERSION: 7.77.0
       CACHE_KEY: 5
-
     steps:
     - uses: actions/checkout@v2
 
@@ -121,12 +123,42 @@ jobs:
         name: libcurl-artifact
         path: libcurl-artifact.tar
 
+  libatomic1:
+    runs-on: ubuntu-latest
+    env:
+      LIBATOMIC1_VERSION: 10.2.1-6
+      CACHE_KEY: 1
+    steps:
+      - name: Cache libcurl
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: libatomic1-artifact.tar
+          key: ${{ runner.os }}-libatomic1_${{ env.LIBATOMIC1_VERSION }}-cache_${{ env.CACHE_KEY }}
+
+      - name: Downloading package
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q http://ftp.debian.org/debian/pool/main/g/gcc-10/libatomic1_${LIBATOMIC1_VERSION}_amd64.deb
+          ar x libatomic1_${LIBATOMIC1_VERSION}_amd64.deb
+          mkdir tmp
+          tar -xf data.tar.xz -C ./tmp
+
+      - name: Prepare artifact
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p artifact/usr/lib
+          cp -a tmp/usr/lib/x86_64-linux-gnu/libatomic.so.1* artifact/usr/lib
+          tar -cvf libatomic1-artifact.tar artifact/
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: libatomic1-artifact
+          path: libatomic1-artifact.tar
+
   spotify:
     runs-on: ubuntu-latest
     needs: libcurl
-    env:
-      SPOTIFY_VERSION: 1.1.56.595.g2d2da0de
-
     steps:
     - uses: actions/checkout@v2
 
@@ -160,9 +192,14 @@ jobs:
       with:
         name: libcurl-artifact
 
+    - uses: actions/download-artifact@v2
+      with:
+        name: libatomic1-artifact
+
     - name: Extracting dependencies
       run: |
         tar -xvf libcurl-artifact.tar
+        tar -xvf libatomic1-artifact.tar
         cp -aR artifact/usr AppDir
 
     - name: Build AppImage
@@ -190,8 +227,8 @@ jobs:
     - name: Release
       uses: marvinpinto/action-automatic-releases@latest
       with:
-        title: Spotify Stable AppImage Builds
-        automatic_release_tag: stable
+        title: Spotify ${{ env.SPOTIFY_VERSION }}
+        automatic_release_tag: ${{ env.SPOTIFY_VERSION }}
         prerelease: false
         draft: false
         files: Spotify-*-x86_64.AppImage*
