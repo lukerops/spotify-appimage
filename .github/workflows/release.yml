@@ -88,6 +88,7 @@ jobs:
         make install
 
     - name: Patch curl
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
         patch -i patches/curlvers.patch build/curl-7.77.0/lib/libcurl.vers.in
 
