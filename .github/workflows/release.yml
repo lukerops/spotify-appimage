@@ -9,6 +9,9 @@ defaults:
   run:
     shell: bash
 
+env:
+  SPOTIFY_VERSION: 1.1.68.632.g2b11de83
+
 jobs:
   libcurl:
     runs-on: ubuntu-latest
@@ -19,7 +22,6 @@ jobs:
       GNUTLS_VERSION: 3.6.16
       CURL_VERSION: 7.77.0
       CACHE_KEY: 5
-
     steps:
     - uses: actions/checkout@v2
 
@@ -124,9 +126,6 @@ jobs:
   spotify:
     runs-on: ubuntu-latest
     needs: libcurl
-    env:
-      SPOTIFY_VERSION: 1.1.56.595.g2d2da0de
-
     steps:
     - uses: actions/checkout@v2
 
@@ -190,7 +189,7 @@ jobs:
     - name: Release
       uses: marvinpinto/action-automatic-releases@latest
       with:
-        title: Spotify Stable AppImage Builds
+        title: Spotify ${{ env.SPOTIFY_VERSION }}
         automatic_release_tag: stable
         prerelease: false
         draft: false
